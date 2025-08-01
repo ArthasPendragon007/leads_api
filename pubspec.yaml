@@ -1,0 +1,15 @@
+name: leads_api
+description: Retorna os leads separdos em Revendas e Utilização, com suporte a paginação.
+version: 1.0.0
+# repository: https://github.com/my_org/my_repo
+
+environment:
+  sdk: ^3.7.2
+
+dependencies:
+  postgres: ^3.5.4
+  vaden: ^0.1.1
+
+dev_dependencies:
+  build_runner: ^2.4.14
+  vaden_class_scanner: ^0.1.2
