@@ -41,10 +41,10 @@ class LeadsComercialRepository implements ILeadsComercialRepository {
         'anuncio': dto.anuncio,
       },
     );
-  }  Future<List<LeadsComercialDto>> getAllPaginado({required int pagina, required int limit, String? fonte, String? interesse}) async {
+  }  Future<List<LeadsComercialDto>> getAllPaginado({required int pagina, required int limit, String? fonte, String? interesse, String? status}) async {
     int offset = pagina * limit;
 
-    final filtros = {'fonte': fonte, 'interesse': interesse};
+    final filtros = {'fonte': fonte, 'interesse': interesse,'status': status};
 
     final filtroResult = buildWhereClauseAndParams(filtros);
     final whereClause = filtroResult['where'] as String;
@@ -59,7 +59,8 @@ class LeadsComercialRepository implements ILeadsComercialRepository {
       nome, 
       email, 
       cnpj, 
-      telefone, 
+      telefone,
+      status,
       interesse, 
       fonte, 
       meio, 
@@ -96,17 +97,18 @@ class LeadsComercialRepository implements ILeadsComercialRepository {
 
   LeadsComercialDto fromMap(Map<String, dynamic> map) =>
     LeadsComercialDto(
-    id: map['id_leads_comercial'],
-    nome: map['nome'],
-    email: map['email'],
-    telefone: map['telefone'],
-    cnpj: map['cnpj'],
-    anuncio: map['anuncio'],
-    meio: map['meio'],
-    status: map['status'],
-    fonte: map['fonte'],
-    interesse: map['interesse'],
-    dataHora: map['data_hora'],
-    origem: map['origem'],
-  );
+      id: map['id_leads_comercial'],
+      dataHora: map['data_hora'],
+      nome: map['nome'],
+      email: map['email'],
+      cnpj: map['cnpj'],
+      telefone: map['telefone'],
+      interesse: InteresseLead.fromName(map['interesse']),
+      origem: map['origem'],
+      fonte: map['fonte'],
+      meio: map['meio'],
+      anuncio: map['anuncio'],
+      status: StatusLead.fromName(map['status']),
+    );
 }
+

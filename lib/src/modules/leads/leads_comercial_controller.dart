@@ -17,16 +17,11 @@ class OperadorController {
   @ApiResponse(401, description: 'Não autorizado', content: ApiContent(type: 'application/json'))
   @ApiResponse(500, description: 'Erro interno do servidor', content: ApiContent(type: 'application/json'))
   @Get('/pegarTudoPaginado')
-  Future<Response> getAllPaginado(@Query("PageNumber") int pagina, [@Query("PageSize") int? limit = 10,@Query("FiltroFonte") String? fonte,@Query("FiltroInteresse") String? interesse]) async {
+  Future<List<LeadsComercialDto>> getAllPaginado(@Query("PageNumber") int pagina, [@Query("PageSize") int? limit, @Query("Filtro Fonte") String? fonte, @Query("Filtro Interesse") String? interesse, @Query("Filtro Status") String? status]) async {
     limit = limit ?? 10;
-    try{
-      final leads = await _service.getAllPaginado(pagina: pagina, limit: limit, fonte: fonte, interesse: interesse);
-      return Response.ok(jsonEncode(leads), headers: {'Content-Type': 'application/json'});
-    } catch(e) {
-      return Response.badRequest(body: jsonEncode({'error': e.toString()}), headers: {'Content-Type': 'application/json'});
-
+    pagina -= 1;
+      return await _service.getAllPaginado(pagina: pagina, limit: limit, fonte: fonte, interesse: interesse,status: status);
     }
-  }
 
   @ApiOperation(summary: 'Atualizar valores do Lead', description: 'Atualiza um Lead já existente no sistema')
   @ApiResponse(200, description: 'Operador cadastrado com sucesso', content: ApiContent(type: 'application/json', schema: LeadsComercialDto))
@@ -34,12 +29,7 @@ class OperadorController {
   @ApiResponse(401, description: 'Não autorizado', content: ApiContent(type: 'application/json'))
   @ApiResponse(500, description: 'Erro interno do servidor', content: ApiContent(type: 'application/json'))
   @Put('/atualizar')
-  Future<Response> Atualizar(@Body() LeadsComercialDto dto) async {
-    try {
-  await _service.update(dto);
-  return Response.ok(jsonEncode({}));
-  } catch (e) {
-  return Response.badRequest(body: jsonEncode({'error': e.toString()}), headers: {'Content-Type': 'application/json'});
+  Future<LeadsComercialDto> Atualizar(@Body() LeadsComercialDto dto) async {
+    return await _service.update(dto);
   }
-}
 }

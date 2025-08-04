@@ -1,19 +1,18 @@
-import 'package:leads_api/src/shared/enums/fonte_lead.enum.dart';
-import 'package:leads_api/src/shared/enums/interesse_lead.enum.dart';
-import 'package:leads_api/src/shared/enums/leads_enums.dart';
+import 'package:vaden/vaden.dart';
 
+@DTO()
 class LeadsComercialDto {
   final int id;
   final DateTime dataHora;
-  final String nome;
-  final String email;
-  final String cnpj;
-  final String telefone;
+  final String? nome;
+  final String? email;
+  final String? cnpj;
+  final String? telefone;
   final InteresseLead interesse;
-  final String origem;
-  final FonteLead fonte;
-  final String meio;
-  final String anuncio;
+  final String? origem;
+  final String? fonte;
+  final String? meio;
+  final String? anuncio;
   final StatusLead status;
 
   LeadsComercialDto({
@@ -39,12 +38,12 @@ class LeadsComercialDto {
       email: map['email'],
       cnpj: map['cnpj'],
       telefone: map['telefone'],
-      interesse: InteresseLead.fromString(map['interesse'])!,
+      interesse: InteresseLead.fromName(map['interesse']),
       origem: map['origem'],
-      fonte: FonteLead.fromString(map['fonte'])!,
+      fonte: map['fonte'],
       meio: map['meio'],
       anuncio: map['anuncio'],
-      status: StatusLead.fromString(map['status'])!,
+      status: StatusLead.fromName(map['status']),
     );
   }
 
@@ -56,12 +55,39 @@ class LeadsComercialDto {
       'email': email,
       'cnpj': cnpj,
       'telefone': telefone,
-      'interesse': interesse.label,
+      'interesse': interesse.name,
       'origem': origem,
-      'fonte': fonte.label,
+      'fonte': fonte,
       'meio': meio,
       'anuncio': anuncio,
-      'status': status.label,
+      'status': status.name,
     };
   }
 }
+
+enum InteresseLead {
+  utilizacao,
+  revenda;
+
+
+  static InteresseLead fromName(String value) {
+    return InteresseLead.values.firstWhere(
+          (e) => e.name == value.toLowerCase(),
+      orElse: () => InteresseLead.utilizacao,
+    );
+  }
+}
+
+enum StatusLead {
+  pendente,
+  concluido;
+
+  static StatusLead fromName(String value) {
+    return StatusLead.values.firstWhere(
+          (e) => e.name == value.toLowerCase(),
+      orElse: () => StatusLead.pendente,
+    );
+  }
+}
+
+
