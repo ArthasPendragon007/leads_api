@@ -3,6 +3,8 @@ import 'package:leads_api/src/modules/leads/repository/i_leads_comercial_reposit
 import 'package:leads_api/src/shared/database/database.dart';
 import 'package:vaden/vaden.dart';
 
+import '../dto/lead_contagem_dto.dart';
+
 @Scope(BindType.instance)
 @Repository()
 class LeadsComercialRepository implements ILeadsComercialRepository {
@@ -13,6 +15,7 @@ class LeadsComercialRepository implements ILeadsComercialRepository {
   LeadsComercialRepository(this._database);
 
   Future<void> update(LeadsComercialDto dto) async {
+    print(dto.status.name);
     await _database.query(
       sql: '''
       UPDATE $_getTableName SET
@@ -25,7 +28,9 @@ class LeadsComercialRepository implements ILeadsComercialRepository {
         origem = @origem,
         fonte = @fonte,
         meio = @meio,
-        anuncio = @anuncio
+        anuncio = @anuncio,
+        status = @status,
+        parceiro = @parceiro
       WHERE id_${_getTableName} = @id;
     ''',
       parameters: {
@@ -35,22 +40,35 @@ class LeadsComercialRepository implements ILeadsComercialRepository {
         'email': dto.email,
         'cnpj': dto.cnpj,
         'telefone': dto.telefone,
-        'interesse': dto.interesse,
+        'interesse': dto.interesse.toDb(),
         'fonte': dto.fonte,
+        'origem': dto.origem,
         'meio': dto.meio,
         'anuncio': dto.anuncio,
+        'status': dto.status.name,
+        'parceiro': dto.parceiro,
       },
     );
-  }  Future<List<LeadsComercialDto>> getAllPaginado({required int pagina, required int limit, String? fonte, String? interesse, String? status}) async {
-    int offset = pagina * limit;
+  }
 
-    final filtros = {'fonte': fonte, 'interesse': interesse,'status': status};
+  Future<List<LeadsComercialDto>> getAllPaginado({required int pagina, required int limit, String? fonte, String? interesse, String? status, String? busca}) async {
+    final offset = pagina * limit;
 
-    final filtroResult = buildWhereClauseAndParams(filtros);
+    // Filtros exatos
+    final filtros = {
+      'fonte': fonte,
+      'interesse': interesse,
+      'status': status,
+    };
+
+    final filtroResult = buildWhereClauseAndParams(filtros, null);
     final whereClause = filtroResult['where'] as String;
     final params = filtroResult['params'] as Map<String, dynamic>;
 
-    params.addAll({'limit': limit, 'offset': offset});
+    params.addAll({
+      'limit': limit,
+      'offset': offset,
+    });
 
     final sql = '''
     SELECT 
@@ -60,55 +78,99 @@ class LeadsComercialRepository implements ILeadsComercialRepository {
       email, 
       cnpj, 
       telefone,
+      parceiro,
       status,
+      origem,
       interesse, 
       fonte, 
       meio, 
-      anuncio
+      anuncio,
+      parceiro
     FROM $_getTableName
     $whereClause
-    ORDER BY id_${_getTableName} ASC
+    ORDER BY data_hora DESC
     LIMIT @limit OFFSET @offset;
   ''';
 
-    final result = await _database.query(sql: sql, parameters: params).then((rows) => rows.map((map) => fromMap(map)).toList());
+    final result = await _database.query(
+      sql: sql,
+      parameters: params,
+    );
 
-    return result;
+    return result.map(fromMap).toList();
   }
 
-  Map<String, dynamic> buildWhereClauseAndParams(Map<String, dynamic?> filtros) {
+  Map<String, dynamic> buildWhereClauseAndParams(Map<String, dynamic?> filtros, String? busca) {
     final clauses = <String>[];
     final parameters = <String, dynamic>{};
 
+    // Filtros exatos
     for (final entry in filtros.entries) {
       final key = entry.key;
       final value = entry.value;
 
-      if (value != null && value.toString().trim().isNotEmpty) {
+      if (value != null && value
+          .toString()
+          .trim()
+          .isNotEmpty) {
         clauses.add('$key = @$key');
         parameters[key] = value;
       }
     }
 
+    // Fuzzy search por nome
+    if (busca != null && busca
+        .trim()
+        .isNotEmpty) {
+      clauses.add('nome % @busca'); // Operador de similaridade (~30%)
+      parameters['busca'] = busca;
+    }
+
     final where = clauses.isNotEmpty ? 'WHERE ${clauses.join(' AND ')}' : '';
 
-    return {'where': where, 'params': parameters};
+    return {
+      'where': where,
+      'params': parameters,
+    };
   }
 
   LeadsComercialDto fromMap(Map<String, dynamic> map) =>
-    LeadsComercialDto(
-      id: map['id_leads_comercial'],
-      dataHora: map['data_hora'],
-      nome: map['nome'],
-      email: map['email'],
-      cnpj: map['cnpj'],
-      telefone: map['telefone'],
-      interesse: InteresseLead.fromName(map['interesse']),
-      origem: map['origem'],
-      fonte: map['fonte'],
-      meio: map['meio'],
-      anuncio: map['anuncio'],
-      status: StatusLead.fromName(map['status']),
+      LeadsComercialDto(
+        id: map['id_leads_comercial'],
+        dataHora: map['data_hora'],
+        nome: map['nome'],
+        email: map['email'],
+        cnpj: map['cnpj'],
+        telefone: map['telefone'],
+        interesse: InteresseLead.fromName(map['interesse']),
+        origem: map['origem'],
+        fonte: map['fonte'],
+        meio: map['meio'],
+        anuncio: map['anuncio'],
+        status: StatusLead.fromName(map['status']),
+        parceiro: map['parceiro'],
+      );
+
+  Future<LeadContagemDto> getCount() async {
+    final result = await _database.query(
+      sql: '''
+      SELECT
+        COUNT(*) FILTER (WHERE status = 'pendente') AS total_pendentes,
+        COUNT(*) FILTER (WHERE interesse = 'Revenda' AND status = 'pendente') AS total_revenda,
+        COUNT(*) FILTER (WHERE interesse = 'Utilização' AND status = 'pendente') AS total_utilizacao
+      FROM leads_comercial;
+    ''',
     );
+
+    final row = result.first;
+    return LeadContagemDto(
+      ativo: row['total_pendentes'] as int,
+      revenda: row['total_revenda'] as int,
+      utilizacao: row['total_utilizacao'] as int,
+      // Preciso fazer uma Maximo de PageNumber para isso os mesmos filtros enviados para o getAllPaginado precisarão ser enviados aqui. tudo isso para que o front possa fazer a paginação corretamente, resolver amanha.
+    );
+  }
+
 }
+
 

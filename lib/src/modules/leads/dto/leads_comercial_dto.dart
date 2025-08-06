@@ -1,4 +1,5 @@
 import 'package:vaden/vaden.dart';
+import 'package:diacritic/diacritic.dart';
 
 @DTO()
 class LeadsComercialDto {
@@ -14,6 +15,7 @@ class LeadsComercialDto {
   final String? meio;
   final String? anuncio;
   final StatusLead status;
+  final String? parceiro;
 
   LeadsComercialDto({
     required this.id,
@@ -28,6 +30,7 @@ class LeadsComercialDto {
     required this.meio,
     required this.anuncio,
     required this.status,
+    required this.parceiro,
   });
 
   factory LeadsComercialDto.fromMap(Map<String, dynamic> map) {
@@ -44,6 +47,7 @@ class LeadsComercialDto {
       meio: map['meio'],
       anuncio: map['anuncio'],
       status: StatusLead.fromName(map['status']),
+      parceiro: map['parceiro'],
     );
   }
 
@@ -61,6 +65,7 @@ class LeadsComercialDto {
       'meio': meio,
       'anuncio': anuncio,
       'status': status.name,
+      'parceiro': parceiro,
     };
   }
 }
@@ -69,12 +74,22 @@ enum InteresseLead {
   utilizacao,
   revenda;
 
-
   static InteresseLead fromName(String value) {
+    final normalized = removeDiacritics(value.toLowerCase());
+
     return InteresseLead.values.firstWhere(
-          (e) => e.name == value.toLowerCase(),
+          (e) => e.name == normalized,
       orElse: () => InteresseLead.utilizacao,
     );
+  }
+
+  String toDb() {
+    switch (this) {
+      case InteresseLead.utilizacao:
+        return 'Utilização';
+      case InteresseLead.revenda:
+        return 'Revenda';
+    }
   }
 }
 
@@ -83,11 +98,15 @@ enum StatusLead {
   concluido;
 
   static StatusLead fromName(String value) {
+    final normalized = removeDiacritics(value.toLowerCase());
+
     return StatusLead.values.firstWhere(
-          (e) => e.name == value.toLowerCase(),
+          (e) => e.name == normalized,
       orElse: () => StatusLead.pendente,
     );
   }
+
 }
+
 
 
