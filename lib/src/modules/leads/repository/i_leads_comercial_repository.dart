@@ -4,5 +4,11 @@ import 'package:leads_api/src/modules/leads/dto/leads_comercial_dto.dart';
 abstract class ILeadsComercialRepository {
   Future<List<LeadsComercialDto>> getAllPaginado({required int pagina, required int limit, String? fonte, String? interesse, String? status, String? busca});
   Future<void> update(LeadsComercialDto dto);
-  Future<LeadContagemDto> getCount();
+  Future<LeadContagemDto> getCount({
+    required int limit,
+    String? fonte,
+    String? interesse,
+    String? status,
+    String? busca,
+  });
 }

@@ -51,24 +51,29 @@ class LeadsComercialRepository implements ILeadsComercialRepository {
     );
   }
 
-  Future<List<LeadsComercialDto>> getAllPaginado({required int pagina, required int limit, String? fonte, String? interesse, String? status, String? busca}) async {
+  Future<List<LeadsComercialDto>> getAllPaginado({
+    required int pagina,
+    required int limit,
+    String? fonte,
+    String? interesse,
+    String? status,
+    String? busca,
+  }) async {
     final offset = pagina * limit;
 
-    // Filtros exatos
     final filtros = {
       'fonte': fonte,
       'interesse': interesse,
       'status': status,
     };
 
-    final filtroResult = buildWhereClauseAndParams(filtros, null);
-    final whereClause = filtroResult['where'] as String;
-    final params = filtroResult['params'] as Map<String, dynamic>;
-
-    params.addAll({
+    final whereClauseData = _buildWhereClause(filtros, busca);
+    final whereClause = whereClauseData['where'] as String;
+    final params = {
+      ...whereClauseData['params'] as Map<String, dynamic>,
       'limit': limit,
       'offset': offset,
-    });
+    };
 
     final sql = '''
     SELECT 
@@ -84,47 +89,24 @@ class LeadsComercialRepository implements ILeadsComercialRepository {
       interesse, 
       fonte, 
       meio, 
-      anuncio,
-      parceiro
+      anuncio
     FROM $_getTableName
     $whereClause
     ORDER BY data_hora DESC
     LIMIT @limit OFFSET @offset;
   ''';
 
-    final result = await _database.query(
-      sql: sql,
-      parameters: params,
-    );
+    final result = await _database.query(sql: sql, parameters: params);
 
     return result.map(fromMap).toList();
   }
 
-  Map<String, dynamic> buildWhereClauseAndParams(Map<String, dynamic?> filtros, String? busca) {
+  Map<String, dynamic> _buildWhereClause(Map<String, dynamic?> filtros, String? busca) {
     final clauses = <String>[];
     final parameters = <String, dynamic>{};
 
-    // Filtros exatos
-    for (final entry in filtros.entries) {
-      final key = entry.key;
-      final value = entry.value;
-
-      if (value != null && value
-          .toString()
-          .trim()
-          .isNotEmpty) {
-        clauses.add('$key = @$key');
-        parameters[key] = value;
-      }
-    }
-
-    // Fuzzy search por nome
-    if (busca != null && busca
-        .trim()
-        .isNotEmpty) {
-      clauses.add('nome % @busca'); // Operador de similaridade (~30%)
-      parameters['busca'] = busca;
-    }
+    _applyExactFilters(filtros, clauses, parameters);
+    _applyFullTextSearch(busca, clauses, parameters);
 
     final where = clauses.isNotEmpty ? 'WHERE ${clauses.join(' AND ')}' : '';
 
@@ -132,6 +114,41 @@ class LeadsComercialRepository implements ILeadsComercialRepository {
       'where': where,
       'params': parameters,
     };
+  }
+
+  void _applyExactFilters(Map<String, dynamic?> filtros, List<String> clauses, Map<String, dynamic> parameters) {
+    for (final entry in filtros.entries) {
+      final key = entry.key;
+      final value = entry.value;
+
+      if (value != null && value.toString().trim().isNotEmpty) {
+        clauses.add('$key = @$key');
+        parameters[key] = value;
+      }
+    }
+  }
+
+  void _applyFullTextSearch(String? busca, List<String> clauses, Map<String, dynamic> parameters) {
+    if (busca == null || busca.trim().isEmpty) return;
+
+    final camposParaBusca = [
+      'nome',
+      'email',
+      'cnpj',
+      'telefone',
+      'origem',
+      'fonte',
+      'meio',
+      'anuncio',
+      'interesse',
+      'status',
+      'parceiro'
+    ];
+
+    final likeClauses = camposParaBusca.map((campo) => "$campo ILIKE @buscaLike").toList();
+    clauses.add('(${likeClauses.join(' OR ')})');
+
+    parameters['buscaLike'] = '%$busca%';
   }
 
   LeadsComercialDto fromMap(Map<String, dynamic> map) =>
@@ -151,25 +168,42 @@ class LeadsComercialRepository implements ILeadsComercialRepository {
         parceiro: map['parceiro'],
       );
 
-  Future<LeadContagemDto> getCount() async {
+  Future<LeadContagemDto> getCount({required int limit, String? fonte, String? interesse, String? status, String? busca}) async {
+    final filtros = {
+      'fonte': fonte,
+      'status': status,
+    };
+
+    final filtroResult = _buildWhereClause(filtros, busca);
+    final whereClause = filtroResult['where'] as String;
+    final params = filtroResult['params'] as Map<String, dynamic>;
+
     final result = await _database.query(
       sql: '''
-      SELECT
-        COUNT(*) FILTER (WHERE status = 'pendente') AS total_pendentes,
-        COUNT(*) FILTER (WHERE interesse = 'Revenda' AND status = 'pendente') AS total_revenda,
-        COUNT(*) FILTER (WHERE interesse = 'Utilização' AND status = 'pendente') AS total_utilizacao
-      FROM leads_comercial;
+    SELECT
+      COUNT(*) FILTER (WHERE status = @status) AS total_pendentes,
+      COUNT(*) FILTER (WHERE interesse = 'Revenda') AS total_revenda,
+      COUNT(*) FILTER (WHERE interesse = 'Utilização') AS total_utilizacao,
+      COUNT(id_${_getTableName}) AS total_filtrados
+    FROM $_getTableName
+    $whereClause;
     ''',
+      parameters: params,
     );
 
     final row = result.first;
+
+    final totalFiltrados = row['total_filtrados'] as int;
+    final pageTotal = ((totalFiltrados) / limit).ceil();
+
     return LeadContagemDto(
       ativo: row['total_pendentes'] as int,
       revenda: row['total_revenda'] as int,
       utilizacao: row['total_utilizacao'] as int,
-      // Preciso fazer uma Maximo de PageNumber para isso os mesmos filtros enviados para o getAllPaginado precisarão ser enviados aqui. tudo isso para que o front possa fazer a paginação corretamente, resolver amanha.
+      pageTotal: pageTotal,
     );
   }
+
 
 }
 

@@ -18,7 +18,7 @@ class LeadsComercialController {
   @ApiResponse(401, description: 'Não autorizado', content: ApiContent(type: 'application/json'))
   @ApiResponse(500, description: 'Erro interno do servidor', content: ApiContent(type: 'application/json'))
   @Get('/pegarTudoPaginado')
-  Future<List<LeadsComercialDto>> getAllPaginado(@Query("PageNumber") int pagina, [@Query("PageSize") int? limit, @Query("FiltroFonte") String? fonte, @Query("FiltroInteresse") String? interesse, @Query("FiltroStatus") String? status, @Query("Busca") String? busca]) async {
+  Future<List<LeadsComercialDto>> getAllPaginado(@Query("PageNumber") int pagina, [@Query("PageSize") int? limit, @Query("FiltroFonte") String? fonte, @Query("FiltroInteresse") String? interesse, @Query("FiltroStatus") String? status, @Query("FiltroBusca") String? busca]) async {
     limit = limit ?? 10;
     pagina -= 1;
       return await _service.getAllPaginado(pagina: pagina, limit: limit, fonte: fonte, interesse: interesse,status: status, busca: busca);
@@ -29,8 +29,8 @@ class LeadsComercialController {
   @ApiResponse(401, description: 'Não autorizado', content: ApiContent(type: 'application/json'))
   @ApiResponse(500, description: 'Erro interno do servidor', content: ApiContent(type: 'application/json'))
   @Get('/pegarDados')
-  Future<LeadContagemDto> getCount() async {
-    return await _service.getCount();
+  Future<LeadContagemDto> getCount(@Query("PageSize") int limit, @Query("FiltroFonte") String? fonte, @Query("FiltroInteresse") String? interesse, @Query("FiltroStatus") String? status, @Query("FiltroBusca") String? busca) async {
+    return await _service.getCount(limit: limit, fonte: fonte, interesse: interesse,status: status, busca: busca);
   }
 
   @ApiOperation(summary: 'Atualizar valores do Lead', description: 'Atualiza um Lead já existente no sistema')

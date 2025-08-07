@@ -19,8 +19,14 @@ Future<void> update(LeadsComercialDto dto) async {
     return;
   }
 
-  Future<LeadContagemDto> getCount() async {
-    return await _repository.getCount();
+  Future<LeadContagemDto> getCount({
+    required int limit,
+    String? fonte,
+    String? interesse,
+    String? status,
+    String? busca,
+  }) async {
+    return await _repository.getCount(limit: limit, fonte: fonte, interesse: interesse, status: status, busca: busca);
   }
 }
 
