@@ -32,42 +32,6 @@ class LeadsComercialDto {
     required this.status,
     required this.parceiro,
   });
-
-  factory LeadsComercialDto.fromMap(Map<String, dynamic> map) {
-    return LeadsComercialDto(
-      id: map['id_leads_comercial'],
-      dataHora: DateTime.parse(map['data_hora']),
-      nome: map['nome'],
-      email: map['email'],
-      cnpj: map['cnpj'],
-      telefone: map['telefone'],
-      interesse: InteresseLead.fromName(map['interesse']),
-      origem: map['origem'],
-      fonte: map['fonte'],
-      meio: map['meio'],
-      anuncio: map['anuncio'],
-      status: StatusLead.fromName(map['status']),
-      parceiro: map['parceiro'],
-    );
-  }
-
-  Map<String, dynamic> toMap() {
-    return {
-      'id_leads_comercial': id,
-      'data_hora': dataHora.toIso8601String(),
-      'nome': nome,
-      'email': email,
-      'cnpj': cnpj,
-      'telefone': telefone,
-      'interesse': interesse.name,
-      'origem': origem,
-      'fonte': fonte,
-      'meio': meio,
-      'anuncio': anuncio,
-      'status': status.name,
-      'parceiro': parceiro,
-    };
-  }
 }
 
 enum InteresseLead {

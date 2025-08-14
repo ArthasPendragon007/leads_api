@@ -18,20 +18,50 @@ class LeadsComercialController {
   @ApiResponse(401, description: 'Não autorizado', content: ApiContent(type: 'application/json'))
   @ApiResponse(500, description: 'Erro interno do servidor', content: ApiContent(type: 'application/json'))
   @Get('/pegarTudoPaginado')
-  Future<List<LeadsComercialDto>> getAllPaginado(@Query("PageNumber") int pagina, [@Query("PageSize") int? limit, @Query("FiltroFonte") String? fonte, @Query("FiltroInteresse") String? interesse, @Query("FiltroStatus") String? status, @Query("FiltroBusca") String? busca]) async {
+  Future<List<LeadsComercialDto>> getAllPaginado(
+      @Query("PageNumber") int pagina,
+      [@Query("PageSize") int? limit,
+        @Query("FiltroFonte") String? fonte,
+        @Query("FiltroInteresse") String? interesse,
+        @Query("FiltroStatus") String? status,
+        @Query("FiltroBusca") String? busca]
+      ) async {
     limit = limit ?? 10;
-    pagina -= 1;
-      return await _service.getAllPaginado(pagina: pagina, limit: limit, fonte: fonte, interesse: interesse,status: status, busca: busca);
-    }
+    pagina = (pagina > 0) ? pagina - 1 : 0;
+
+    return await _service.getAllPaginado(
+      pagina: pagina,
+      limit: limit,
+      fonte: fonte,
+      interesse: interesse,
+      status: status,
+      busca: busca,
+    );
+  }
+
   @ApiOperation(summary: 'Dados dos Leads', description: 'Visualiza a contagem de algumas colunas da tabela no sistema')
   @ApiResponse(200, description: 'Dados entregue com sucesso', content: ApiContent(type: 'application/json', schema: LeadContagemDto))
   @ApiResponse(400, description: 'Requisição inválida', content: ApiContent(type: 'application/json'))
   @ApiResponse(401, description: 'Não autorizado', content: ApiContent(type: 'application/json'))
   @ApiResponse(500, description: 'Erro interno do servidor', content: ApiContent(type: 'application/json'))
   @Get('/pegarDados')
-  Future<LeadContagemDto> getCount(@Query("PageSize") int limit, @Query("FiltroFonte") String? fonte, @Query("FiltroInteresse") String? interesse, @Query("FiltroStatus") String? status, @Query("FiltroBusca") String? busca) async {
-    return await _service.getCount(limit: limit, fonte: fonte, interesse: interesse,status: status, busca: busca);
+  Future<LeadContagemDto> getCount(
+      @Query("PageSize") int limit,
+      @Query("FiltroFonte") String? fonte,
+      @Query("FiltroInteresse") String? interesse,
+      @Query("FiltroStatus") String? status,
+      @Query("FiltroBusca") String? busca
+      ) async {
+
+    return await _service.getCount(
+      limit: limit,
+      fonte: fonte,
+      interesse: interesse,
+      status: status,
+      busca: busca,
+    );
   }
+
 
   @ApiOperation(summary: 'Atualizar valores do Lead', description: 'Atualiza um Lead já existente no sistema')
   @ApiResponse(200, description: 'Operador cadastrado com sucesso', content: ApiContent(type: 'application/json', schema: LeadsComercialDto))
