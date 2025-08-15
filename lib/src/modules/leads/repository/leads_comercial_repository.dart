@@ -1,9 +1,9 @@
+import 'package:leads_api/src/modules/leads/dto/lead_contagem_dto.dart';
 import 'package:leads_api/src/modules/leads/dto/leads_comercial_dto.dart';
 import 'package:leads_api/src/modules/leads/repository/i_leads_comercial_repository.dart';
 import 'package:leads_api/src/shared/database/database.dart';
 import 'package:vaden/vaden.dart';
 
-import '../dto/lead_contagem_dto.dart';
 
 @Scope(BindType.instance)
 @Repository()
@@ -12,7 +12,6 @@ class LeadsComercialRepository implements ILeadsComercialRepository {
 
   static const String _tableName = 'leads_comercial';
   String get _getIdColumn => 'id_${_tableName}';
-
 
   LeadsComercialRepository(this._database);
 
@@ -191,14 +190,37 @@ class LeadsComercialRepository implements ILeadsComercialRepository {
       ) {
     if (busca == null || busca.trim().isEmpty) return;
 
-    const campos = [
-      'nome', 'email', 'cnpj', 'telefone', 'origem',
-      'fonte', 'meio', 'anuncio', 'interesse', 'status', 'parceiro'
-    ];
+    final termoDeBuscaNumerico = busca.replaceAll(RegExp(r'[^0-9]'), '');
+    final termoDeBuscaTexto = busca.trim();
 
-    final likeClauses = campos.map((c) => '$c ILIKE @buscaLike').toList();
-    clauses.add('(${likeClauses.join(' OR ')})');
-    params['buscaLike'] = '%$busca%';
+    final searchClauses = <String>[];
+
+    searchClauses.add('''
+      (nome ILIKE @buscaText OR email ILIKE @buscaText)
+    ''');
+    params['buscaText'] = '%$termoDeBuscaTexto%';
+
+    if (termoDeBuscaNumerico.isNotEmpty) {
+      searchClauses.add('''
+        (REGEXP_REPLACE(telefone, '[^0-9]', '', 'g') ILIKE @buscaNumerico OR
+        REGEXP_REPLACE(cnpj, '[^0-9]', '', 'g') ILIKE @buscaNumerico)
+      ''');
+      params['buscaNumerico'] = '%$termoDeBuscaNumerico%';
+    }
+
+    searchClauses.add('''
+      (TO_CHAR(data_hora, 'DD/MM/YYYY') ILIKE @buscaData OR
+      TO_CHAR(data_hora, 'YYYY-MM-DD') ILIKE @buscaData)
+    ''');
+    params['buscaData'] = '%$termoDeBuscaTexto%';
+
+    const camposGenericos = [
+      'origem', 'fonte', 'meio', 'anuncio', 'interesse', 'status', 'parceiro'
+    ];
+    final likeClauses = camposGenericos.map((c) => '$c ILIKE @buscaText').toList();
+    searchClauses.add('(${likeClauses.join(' OR ')})');
+
+    clauses.add('(${searchClauses.join(' OR ')})');
   }
 }
 
