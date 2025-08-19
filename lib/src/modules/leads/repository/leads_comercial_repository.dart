@@ -108,32 +108,40 @@ class LeadsComercialRepository implements ILeadsComercialRepository {
     String? status,
     String? busca,
   }) async {
+
+    final totalCountsQuery = '''
+    SELECT
+      COUNT(*) FILTER (WHERE status = @status) AS total_pendentes,
+      COUNT(*) FILTER (WHERE interesse = 'Revenda') AS total_revenda,
+      COUNT(*) FILTER (WHERE interesse = 'Utilização') AS total_utilizacao
+    FROM $_tableName
+    WHERE status = @status;
+  ''';
+    final totalCountsResult = await _database.query(sql: totalCountsQuery, parameters: {'status': status});
+    final totalCountsRow = totalCountsResult.first;
+
     final filtros = {
       'fonte': fonte,
+      'interesse': interesse,
       'status': status,
     };
-
     final whereData = _buildWhereClause(filtros, busca);
-    final sql = '''
-      SELECT
-        COUNT(*) FILTER (WHERE status = @status) AS total_pendentes,
-        COUNT(*) FILTER (WHERE interesse = 'Revenda') AS total_revenda,
-        COUNT(*) FILTER (WHERE interesse = 'Utilização') AS total_utilizacao,
-        COUNT($_getIdColumn) AS total_filtrados
-      FROM $_tableName
-      ${whereData.where};
-    ''';
+    final filteredCountQuery = '''
+    SELECT COUNT($_getIdColumn) AS total_filtrados
+    FROM $_tableName
+    ${whereData.where};
+  ''';
+    final filteredCountResult = await _database.query(sql: filteredCountQuery, parameters: whereData.params);
+    final filteredCountRow = filteredCountResult.first;
 
-    final result = await _database.query(sql: sql, parameters: whereData.params);
-    final row = result.first;
-
-    final totalFiltrados = row['total_filtrados'] as int? ?? 0;
+    final totalFiltrados = filteredCountRow['total_filtrados'] as int? ?? 0;
     final pageTotal = (totalFiltrados / limit).ceil();
 
     return LeadContagemDto(
-      ativo: row['total_pendentes'] as int? ?? 0,
-      revenda: row['total_revenda'] as int? ?? 0,
-      utilizacao: row['total_utilizacao'] as int? ?? 0,
+      totalStatus: totalCountsRow['total_pendentes'] as int? ?? 0,
+      revenda: totalCountsRow['total_revenda'] as int? ?? 0,
+      utilizacao: totalCountsRow['total_utilizacao'] as int? ?? 0,
+      qntLeadsFiltrado: totalFiltrados,
       pageTotal: pageTotal,
     );
   }

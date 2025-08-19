@@ -29,6 +29,7 @@ class LeadsComercialController {
     limit = limit ?? 10;
     pagina = (pagina > 0) ? pagina - 1 : 0;
 
+
     return await _service.getAllPaginado(
       pagina: pagina,
       limit: limit,
