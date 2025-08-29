@@ -4,7 +4,6 @@ import 'package:leads_api/src/modules/leads/repository/i_leads_comercial_reposit
 import 'package:leads_api/src/shared/database/database.dart';
 import 'package:vaden/vaden.dart';
 
-
 @Scope(BindType.instance)
 @Repository()
 class LeadsComercialRepository implements ILeadsComercialRepository {
@@ -31,7 +30,8 @@ class LeadsComercialRepository implements ILeadsComercialRepository {
           meio = @meio,
           anuncio = @anuncio,
           status = @status,
-          parceiro = @parceiro
+          parceiro = @parceiro,
+          cidade = @cidade
         WHERE $_getIdColumn = @id;
       ''',
       parameters: _updateParams(dto),
@@ -52,6 +52,7 @@ class LeadsComercialRepository implements ILeadsComercialRepository {
     'anuncio': dto.anuncio,
     'status': dto.status.name,
     'parceiro': dto.parceiro,
+    'cidade': dto.cidade,
   };
 
   @override
@@ -85,7 +86,8 @@ class LeadsComercialRepository implements ILeadsComercialRepository {
         interesse, 
         fonte, 
         meio, 
-        anuncio
+        anuncio,
+        cidade
       FROM $_tableName
       ${whereData.where}
       ORDER BY data_hora DESC
@@ -108,7 +110,6 @@ class LeadsComercialRepository implements ILeadsComercialRepository {
     String? status,
     String? busca,
   }) async {
-
     final totalCountsQuery = '''
     SELECT
       COUNT(*) FILTER (WHERE status = @status) AS total_pendentes,
@@ -117,7 +118,8 @@ class LeadsComercialRepository implements ILeadsComercialRepository {
     FROM $_tableName
     WHERE status = @status;
   ''';
-    final totalCountsResult = await _database.query(sql: totalCountsQuery, parameters: {'status': status});
+    final totalCountsResult =
+    await _database.query(sql: totalCountsQuery, parameters: {'status': status});
     final totalCountsRow = totalCountsResult.first;
 
     final filtros = {
@@ -131,7 +133,8 @@ class LeadsComercialRepository implements ILeadsComercialRepository {
     FROM $_tableName
     ${whereData.where};
   ''';
-    final filteredCountResult = await _database.query(sql: filteredCountQuery, parameters: whereData.params);
+    final filteredCountResult =
+    await _database.query(sql: filteredCountQuery, parameters: whereData.params);
     final filteredCountRow = filteredCountResult.first;
 
     final totalFiltrados = filteredCountRow['total_filtrados'] as int? ?? 0;
@@ -161,6 +164,7 @@ class LeadsComercialRepository implements ILeadsComercialRepository {
       anuncio: map['anuncio'],
       status: StatusLead.fromName(map['status']),
       parceiro: map['parceiro'],
+      cidade: map['cidade'],
     );
   }
 
@@ -177,6 +181,17 @@ class LeadsComercialRepository implements ILeadsComercialRepository {
     return _WhereData(where, params);
   }
 
+  final Map<String, FilterApplier> _customFilters = {
+    'fonte': (key, value, clauses, params) {
+      if (value   == 'outros') {
+        clauses.add("fonte NOT IN ('Instagram', 'Facebook', 'Google')");
+      } else {
+        clauses.add('fonte = @fonte');
+        params['fonte'] = value;
+      }
+    },
+  };
+
   void _applyExactFilters(
       Map<String, dynamic?> filtros,
       List<String> clauses,
@@ -184,7 +199,12 @@ class LeadsComercialRepository implements ILeadsComercialRepository {
       ) {
     for (final entry in filtros.entries) {
       final value = entry.value;
-      if (value != null && value.toString().trim().isNotEmpty) {
+      if (value == null || value.toString().trim().isEmpty) continue;
+
+      final customFilter = _customFilters[entry.key];
+      if (customFilter != null) {
+        customFilter(entry.key, value, clauses, params);
+      } else {
         clauses.add('${entry.key} = @${entry.key}');
         params[entry.key] = value;
       }
@@ -223,9 +243,17 @@ class LeadsComercialRepository implements ILeadsComercialRepository {
     params['buscaData'] = '%$termoDeBuscaTexto%';
 
     const camposGenericos = [
-      'origem', 'fonte', 'meio', 'anuncio', 'interesse', 'status', 'parceiro'
+      'origem',
+      'fonte',
+      'meio',
+      'anuncio',
+      'interesse',
+      'status',
+      'parceiro',
+      'cidade'
     ];
-    final likeClauses = camposGenericos.map((c) => '$c ILIKE @buscaText').toList();
+    final likeClauses =
+    camposGenericos.map((c) => '$c ILIKE @buscaText').toList();
     searchClauses.add('(${likeClauses.join(' OR ')})');
 
     clauses.add('(${searchClauses.join(' OR ')})');
@@ -237,3 +265,9 @@ class _WhereData {
   final Map<String, dynamic> params;
   _WhereData(this.where, this.params);
 }
+typedef FilterApplier = void Function(
+    String key,
+    dynamic value,
+    List<String> clauses,
+    Map<String, dynamic> params,
+    );

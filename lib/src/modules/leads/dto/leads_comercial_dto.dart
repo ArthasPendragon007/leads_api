@@ -16,6 +16,7 @@ class LeadsComercialDto {
   final String? anuncio;
   final StatusLead status;
   final String? parceiro;
+  final String? cidade;
 
   LeadsComercialDto({
     required this.id,
@@ -31,6 +32,7 @@ class LeadsComercialDto {
     required this.anuncio,
     required this.status,
     required this.parceiro,
+    required this.cidade,
   });
 }
 
